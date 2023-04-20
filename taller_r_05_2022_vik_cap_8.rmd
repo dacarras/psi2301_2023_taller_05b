@@ -1,0 +1,542 @@
+---
+title: "Taller 05"
+subtitle: "Regresión con variable categorica de dos valores (Vik, 2014, cap 8)"
+date: '`r format(Sys.time(), "%a %b %d, %Y")`'
+author: "dacarras"
+output:
+  github_document
+---
+
+# Taller 5: regresión empleada para realizar comparaciones entre grupos
+
+## Cargar datos
+
+```{r , echo=TRUE, warning=FALSE}
+
+#----------------------------------------------------------
+# cargar datos
+#----------------------------------------------------------
+
+#--------------------------------------
+# cargar dplyr
+#--------------------------------------
+
+library(dplyr)
+
+#--------------------------------------
+# datos Vik (2014, p83)
+#--------------------------------------
+
+table_7_1 <- read.table(text = "
+subject   score    group       dummy
+      1       3    'No Dx'        -1
+      2       5    'No Dx'        -1
+      3       6    'No Dx'        -1
+      4       8    'No Dx'        -1
+      5       9    'No Dx'        -1
+      6      11    'No Dx'        -1
+      7      19    'Depressed'     1
+      8      15    'Depressed'     1
+      9      16    'Depressed'     1
+     10      16    'Depressed'     1
+     11      19    'Depressed'     1
+     12      17    'Depressed'     1
+     13       3    'No Dx'        -1
+     14       5    'No Dx'        -1
+     15       4    'No Dx'        -1
+     16       6    'No Dx'        -1
+     17       8    'No Dx'        -1
+     18      10    'No Dx'        -1
+     19      24    'Depressed'     1
+     20      24    'Depressed'     1
+     21      22    'Depressed'     1
+     22      23    'Depressed'     1
+     23      19    'Depressed'     1
+     24      20    'Depressed'     1
+", header = TRUE, stringsAsFactors = FALSE)
+
+# --------------------------------------
+# variables
+#--------------------------------------
+
+# score = puntaje de sintomas
+# group = grupo diagnosticado (Depressed), 
+#         y grupo no diagnosticado (No Dx)
+
+```
+
+# Comparación de aproximaciones
+
+## Aplicación de pruebas
+
+```{r , echo=TRUE, warning=FALSE}
+
+#----------------------------------------------------------
+# aplicación de pruebas
+#----------------------------------------------------------
+
+#--------------------------------------
+# t test
+#--------------------------------------
+
+t.test(score ~ group, var.equal=TRUE, data = table_7_1)
+
+#--------------------------------------
+# anova
+#--------------------------------------
+
+aov(score ~ dummy, data = table_7_1) %>%
+summary()
+
+#--------------------------------------
+# regresion
+#--------------------------------------
+
+lm(score ~ dummy, data = table_7_1) %>%
+summary()
+
+```
+
+## Extracción de estadísticos
+
+```{r , echo=TRUE, warning=FALSE}
+
+#----------------------------------------------------------
+# aplicación de pruebas
+#----------------------------------------------------------
+
+#--------------------------------------
+# t test
+#--------------------------------------
+
+t_stat <- t.test(score ~ group, var.equal=TRUE, data = table_7_1) %>%
+          broom::tidy() %>%
+          dplyr::select(statistic) %>%
+          dplyr::pull() %>%
+          as.numeric()
+
+#--------------------------------------
+# anova
+#--------------------------------------
+
+f_stat1 <- aov(score ~ dummy, data = table_7_1) %>%
+           broom::tidy() %>%
+           dplyr::filter(term == 'dummy') %>%
+           dplyr::select(statistic) %>%
+           dplyr::pull() %>%
+           as.numeric()
+
+#--------------------------------------
+# regresion
+#--------------------------------------
+
+f_stat2 <- lm(score ~ dummy, data = table_7_1) %>%
+           broom::glance() %>%
+           dplyr::select(statistic) %>%
+           dplyr::pull() %>%
+           as.numeric()
+
+```
+
+## Tabla comparando los estadisticos
+
+```{r , echo=TRUE, warning=FALSE}
+
+#----------------------------------------------------------
+# tabla de comparación
+#----------------------------------------------------------
+
+#--------------------------------------
+# crear tabla
+#--------------------------------------
+
+table_1 <- data.frame(
+procedimiento = c('t test', 'anova', 'regresion'),
+estadigrafo  = c('t', 'F', 'F'),
+valor = c(t_stat, f_stat1, f_stat2),
+operacion = c('^2','=','='),
+comun = c(t_stat^2, f_stat1, f_stat2)
+)
+
+#--------------------------------------
+# mostrar tabla
+#--------------------------------------
+
+table_1 %>%
+knitr::kable(., digits = 2)
+
+```
+
+# Cómo crear dummy coding y deviation coding
+
+## Cargar datos
+
+```{r , echo=TRUE, warning=FALSE}
+
+#----------------------------------------------------------
+# cargar datos
+#----------------------------------------------------------
+
+#--------------------------------------
+# cargar dplyr
+#--------------------------------------
+
+library(dplyr)
+
+#--------------------------------------
+# datos Vik (2014, p83)
+#--------------------------------------
+
+table_7_1 <- read.table(text = "
+subject   score    group       dummy
+      1       3    'No Dx'        -1
+      2       5    'No Dx'        -1
+      3       6    'No Dx'        -1
+      4       8    'No Dx'        -1
+      5       9    'No Dx'        -1
+      6      11    'No Dx'        -1
+      7      19    'Depressed'     1
+      8      15    'Depressed'     1
+      9      16    'Depressed'     1
+     10      16    'Depressed'     1
+     11      19    'Depressed'     1
+     12      17    'Depressed'     1
+     13       3    'No Dx'        -1
+     14       5    'No Dx'        -1
+     15       4    'No Dx'        -1
+     16       6    'No Dx'        -1
+     17       8    'No Dx'        -1
+     18      10    'No Dx'        -1
+     19      24    'Depressed'     1
+     20      24    'Depressed'     1
+     21      22    'Depressed'     1
+     22      23    'Depressed'     1
+     23      19    'Depressed'     1
+     24      20    'Depressed'     1
+", header = TRUE, stringsAsFactors = FALSE)
+
+# --------------------------------------
+# variables
+#--------------------------------------
+
+# score = puntaje de sintomas
+# group = grupo diagnosticado (Depressed), 
+#         y grupo no diagnosticado (No Dx)
+
+```
+
+## Preparar datos
+
+- Crear recodificación de variables categóricas
+  + deviation coding
+  + dummy coding
+
+```{r , echo=TRUE, warning=FALSE}
+
+#----------------------------------------------------------
+# crear dummies
+#----------------------------------------------------------
+
+#--------------------------------------
+# recodificar variables
+#--------------------------------------
+
+data_model <- table_7_1 %>%
+              dplyr::select(subject, score, group) %>%
+              mutate(deviation = case_when(
+                group == 'No Dx'     ~ -1, # sin diagnóstico
+                group == 'Depressed' ~  1  # con diagnóstico
+                )) %>%
+              mutate(dummy = case_when(
+                group == 'No Dx'     ~  0, # sin diagnóstico
+                group == 'Depressed' ~  1  # con diagnóstico
+                ))
+
+# --------------------------------------
+# mostrar datos
+#--------------------------------------
+
+data_model %>%
+knitr::kable()
+
+```
+
+
+## Medias esperadas (deviation)
+
+- Medias esperadas empleando *deviation coding*
+
+```{r , echo=TRUE, warning=FALSE}
+
+#----------------------------------------------------------
+# regresion como modelo estructural
+#----------------------------------------------------------
+
+# -----------------------------------------------
+# define model
+# -----------------------------------------------
+
+regression_equations <-'
+score ~ b*deviation       # beta
+score ~ a*1               # intercepto
+
+# medias esperadas
+group_1  := a - 1*b       # media grupo 1
+group_2  := a + 1*b       # media grupo 2
+delta    := 2*b           # diferencia de medias
+'
+
+# -----------------------------------------------
+# fit model
+# -----------------------------------------------
+
+fitted_model <- lavaan::sem(regression_equations, 
+                 mimic = 'MPLUS',
+                 data = data_model)
+
+# -----------------------------------------------
+# display summary
+# -----------------------------------------------
+
+lavaan::summary(fitted_model, 
+  fit.measures=TRUE,
+  standardized=TRUE,
+  rsquare=TRUE)
+
+#------------------------------------------------
+# medias esperadas
+#------------------------------------------------
+
+lavaan::parameterEstimates(fitted_model)%>% 
+dplyr::filter(op == ':=') %>%
+knitr::kable(., digits = 2)
+
+#------------------------------------------------
+# medias por grupo
+#------------------------------------------------
+
+data_model %>%
+group_by(deviation) %>%
+summarize(
+  mean = mean(score, na.rm = TRUE)
+  ) %>%
+knitr::kable(., digits = 2)
+
+```
+
+
+## Medias esperadas (dummy)
+
+- Medias esperadas empleando *dummy coding*
+
+```{r , echo=TRUE, warning=FALSE}
+
+#----------------------------------------------------------
+# regresion
+#----------------------------------------------------------
+
+# -----------------------------------------------
+# define model
+# -----------------------------------------------
+
+regression_equations <-'
+score ~ b*dummy       # beta
+score ~ a*1           # intercepto
+
+# medias esperadas
+group_1  := a         # media grupo 1
+group_2  := a + 1*b   # media grupo 2
+delta    := b         # diferencia de medias
+'
+
+# -----------------------------------------------
+# fit model
+# -----------------------------------------------
+
+fitted_model <- lavaan::sem(regression_equations, 
+                 mimic = 'MPLUS',
+                 data = data_model)
+
+# -----------------------------------------------
+# display summary
+# -----------------------------------------------
+
+lavaan::summary(fitted_model, 
+  fit.measures=TRUE,
+  standardized=TRUE,
+  rsquare=TRUE)
+
+#------------------------------------------------
+# medias esperadas
+#------------------------------------------------
+
+lavaan::parameterEstimates(fitted_model)%>% 
+dplyr::filter(op == ':=') %>%
+knitr::kable(., digits = 2)
+
+#------------------------------------------------
+# medias por grupo
+#------------------------------------------------
+
+data_model %>%
+group_by(dummy) %>%
+summarize(
+  mean = mean(score, na.rm = TRUE)
+  ) %>%
+knitr::kable(., digits = 2)
+
+```
+
+# Ejemplo práctico
+
+- Comparación de medias empleando regresión
+  + Variable de respuesta: creencias antidemocráticas
+  + Variable categórica: concepciones de democracia
+
+## Abrir datos
+
+```{r , echo=TRUE, warning=FALSE}
+
+#----------------------------------------------------------
+# abrir datos
+#----------------------------------------------------------
+
+# -----------------------------------------------
+# abrir datos
+# -----------------------------------------------
+
+data_16 <- read.csv(
+url('https://raw.githubusercontent.com/dacarras/psi4035_examples/master/data/dem_16.csv')
+)
+
+# -----------------------------------------------
+# inspreccionar datos
+# -----------------------------------------------
+
+dplyr::glimpse(data_16)
+
+```
+
+## Listado de variables
+
+```text
+
+# variable
+
+id_i      = id único del caso
+ctry      = nombre del país
+sex       = sexo del estudiante
+age       = edad del estudiante en años
+dem       = perfil de concepciones de las democracia (1 = minimalista, 2 = complejo, 3 = limitado)
+dem_group = perfil de concepciones de las democracia (en texto)
+aut       = creencias antidemocráticas 
+civ       = conocimiento cívico 
+ses       = nivel socioecónomico 
+edu       = educación de los padres (1 = educación universitaria, 0 = otro nivel educativo)
+level     = niveles de conocimiento cívico (numérico) (3 = alta sofisticación, 2 = medio, 1 = bajo, 0 = muy bajo)
+level_lab = niveles de conocimiento cívico (Level 3 = alta sofisticación, Level 2 = medio, Level 1 = bajo, Level 0 = muy bajo)
+
+```
+
+## Medias esperadas
+
+```{r , echo=TRUE, warning=FALSE}
+
+#----------------------------------------------------------
+# medias esperadas
+#----------------------------------------------------------
+
+#------------------------------------------------
+# descriptivos
+#------------------------------------------------
+
+data_16 %>%
+group_by(dem, dem_group) %>%
+summarize(
+  mean = mean(aut, na.rm = TRUE),
+  sd   = sd(aut, na.rm = TRUE),
+  n = sum(!is.na(aut))
+  ) %>%
+knitr::kable(., digits = 2)
+
+# -----------------------------------------------
+# boxplot
+# -----------------------------------------------
+
+boxplot(aut~dem_group,
+  data = data_16,
+  xlab = "Concepciones de democracia",
+  ylab = "Autoritarismo"
+  )
+
+# -----------------------------------------------
+# regresion
+# -----------------------------------------------
+
+lm(aut ~ as.factor(dem), data = data_16) %>%
+summary()
+
+#------------------------------------------------
+# crear variables dummy
+#------------------------------------------------
+
+data_model <- data_16 %>%
+              mutate(d1 = case_when(
+                dem_group == 'minimalist' ~ 1,
+                dem_group == 'complex'    ~ 0,
+                dem_group == 'limited'    ~ 0
+                )) %>%
+              mutate(d2 = case_when(
+                dem_group == 'minimalist' ~ 0,
+                dem_group == 'complex'    ~ 1,
+                dem_group == 'limited'    ~ 0
+                )) %>%
+              mutate(d3 = case_when(
+                dem_group == 'minimalist' ~ 0,
+                dem_group == 'complex'    ~ 0,
+                dem_group == 'limited'    ~ 1
+                ))
+# -----------------------------------------------
+# define model
+# -----------------------------------------------
+
+regression_equations <-'
+aut   ~ b2*d3          # beta_2
+aut   ~ b1*d2          # beta_1
+aut   ~ a*1            # intercepto
+
+# medias esperadas
+group_1  := a          # media grupo 1 (minimalist)
+group_2  := a + b1     # media grupo 2 (complex)
+group_3  := a + b2     # media grupo 3 (limited)
+delta_1  := group_1 - group_3 # diferencia entre minimalist vs limited
+'
+
+# -----------------------------------------------
+# fit model
+# -----------------------------------------------
+
+fitted_model <- lavaan::sem(regression_equations, 
+                 mimic = 'MPLUS',
+                 data = data_model)
+
+# -----------------------------------------------
+# display summary
+# -----------------------------------------------
+
+lavaan::summary(fitted_model, 
+  fit.measures=TRUE,
+  standardized=TRUE,
+  rsquare=TRUE)
+
+#------------------------------------------------
+# medias esperadas
+#------------------------------------------------
+
+lavaan::parameterEstimates(fitted_model)%>% 
+dplyr::filter(op == ':=') %>%
+knitr::kable(., digits = 2)
+
+```
+
+
